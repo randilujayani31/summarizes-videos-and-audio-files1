@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Meeting Summarizer & Chatbot</title>
+  <style>
+    /* Reset and base */
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #2a3a7b, #1e2a5c);
+      color: #222;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 0 10px 40px;
+    }
+
+    header {
+      width: 100%;
+      padding: 50px 10px 30px;
+      text-align: center;
+      user-select: none;
+    }
+
+    /* Avatar circle with white background and subtle dark border and shadow */
+    #avatar-container {
+      width: 110px;
+      height: 110px;
+      margin: 0 auto 20px;
+      background: white;
+      border-radius: 50%;
+      border: 3px solid #1a2450;
+      box-shadow: 0 0 15px #000c2eaa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      filter: drop-shadow(0 0 8px #3355ffcc);
+    }
+
+    #avatar-container img {
+      width: 70px;
+      height: 70px;
+      object-fit: contain;
+    }
+
+    /* Site name and caption directly below avatar, no separate box */
+    #site-name {
+      color: #cbd6ff;
+      font-size: 2.6rem;
+      font-weight: 700;
+      text-shadow: 0 0 8px #3366ffcc;
+      margin: 0 0 10px;
+      user-select: none;
+    }
+
+    #caption {
+      color: #aab8ffcc;
+      font-size: 1.2rem;
+      font-weight: 400;
+      text-shadow: 0 0 6px #3a5affaa;
+      margin: 0 auto;
+      max-width: 440px;
+      user-select: none;
+    }
+
+    main {
+      margin-top: 20px;
+      max-width: 600px;
+      width: 100%;
+      background: #f9fbff;
+      border-radius: 15px;
+      box-shadow: 0 0 25px #22336666;
+      padding: 25px 30px 35px;
+      user-select: text;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    input[type="file"] {
+      padding: 10px;
+      border: 2px solid #3355ff;
+      border-radius: 8px;
+      cursor: pointer;
+      background: #e4eaff;
+      color: #112244;
+      font-weight: 600;
+    }
+
+    button[type="submit"] {
+      background: #3344ee;
+      border: none;
+      color: white;
+      font-weight: 700;
+      padding: 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      box-shadow: 0 0 18px #3355ff;
+      transition: background 0.3s ease;
+    }
+
+    button[type="submit"]:hover {
+      background: #2233bb;
+      box-shadow: 0 0 28px #4466ff;
+    }
+
+    #transcript, #summary {
+      white-space: pre-wrap;
+      background: #eef3ff;
+      border-radius: 10px;
+      padding: 15px;
+      border: 1px solid #3355ff44;
+      max-height: 180px;
+      overflow-y: auto;
+      margin-top: 10px;
+      box-shadow: inset 0 0 18px #3355ff22;
+      font-size: 1rem;
+      color: #223366;
+    }
+
+    #download-btn {
+      display: none;
+      margin-top: 15px;
+      background: #2233bb;
+      box-shadow: 0 0 25px #2244ff;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 10px 20px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: background 0.3s ease;
+    }
+
+    #download-btn:hover {
+      background: #112288;
+      box-shadow: 0 0 30px #4466ff;
+    }
+
+    /* Chatbot floating button */
+    #chatbot-toggle {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #3355ff;
+      border: none;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      cursor: pointer;
+      box-shadow: 0 0 20px #3355ff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      transition: background 0.3s ease;
+    }
+
+    #chatbot-toggle:hover {
+      background: #2233bb;
+      box-shadow: 0 0 35px #4466ff;
+    }
+
+    #chatbot-toggle span {
+      font-size: 30px;
+      color: white;
+      user-select: none;
+    }
+
+    /* Chat widget container */
+    #chatbot-container {
+      position: fixed;
+      bottom: 90px;
+      right: 20px;
+      width: 320px;
+      max-height: 400px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(51, 85, 255, 0.85);
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 1000;
+      font-size: 0.9rem;
+      user-select: text;
+    }
+
+    #chat-container {
+      flex: 1;
+      padding: 15px;
+      overflow-y: auto;
+      background: #f9fbff;
+    }
+
+    .user-msg, .ai-msg {
+      margin-bottom: 12px;
+      padding: 8px 12px;
+      border-radius: 15px;
+      max-width: 80%;
+      word-wrap: break-word;
+      line-height: 1.3;
+      user-select: text;
+    }
+
+    .user-msg {
+      background: #3355ff;
+      color: white;
+      align-self: flex-end;
+      box-shadow: 0 0 15px #3355ffaa;
+    }
+
+    .ai-msg {
+      background: #d4dbff;
+      color: #223366;
+      align-self: flex-start;
+      box-shadow: 0 0 15px #3355ff55;
+    }
+
+    #chat-form {
+      display: flex;
+      border-top: 1px solid #ddd;
+      padding: 10px;
+      background: #e4eaff;
+    }
+
+    #chat-input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #3355ff;
+      border-radius: 20px;
+      outline: none;
+      font-size: 1rem;
+      user-select: text;
+    }
+
+    #chat-form button {
+      background: #3355ff;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      margin-left: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px #3355ff;
+      transition: background 0.3s ease;
+      user-select: none;
+    }
+
+    #chat-form button:hover {
+      background: #2233bb;
+      box-shadow: 0 0 30px #4466ff;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div id="avatar-container">
+      <img src="https://cdn-icons-png.flaticon.com/512/4712/4712011.png" alt="Cartoon avatar" />
+    </div>
+    <h1 id="site-name">Meeting Summarizer AI</h1>
+    <p id="caption">Convert your meetings to clear summaries & get instant answers</p>
+  </header>
+
+  <main>
+    <form id="upload-form">
+      <input type="file" id="audio-input" accept="audio/*" required />
+      <button type="submit">Upload & Summarize</button>
+    </form>
+
+    <h3>Transcript:</h3>
+    <pre id="transcript"></pre>
+
+    <h3>Summary & Action Items:</h3>
+    <pre id="summary"></pre>
+
+    <button id="download-btn">Download Summary PDF</button>
+  </main>
+
+  <button id="chatbot-toggle" title="Chat with AI"><span>💬</span></button>
+
+  <div id="chatbot-container">
+    <div id="chat-container"></div>
+    <form id="chat-form">
+      <input id="chat-input" type="text" placeholder="Ask me anything..." autocomplete="off" required />
+      <button type="submit">→</button>
+    </form>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    const { jsPDF } = window.jspdf;
+    const uploadForm = document.getElementById('upload-form');
+    const audioInput = document.getElementById('audio-input');
+    const transcriptEl = document.getElementById('transcript');
+    const summaryEl = document.getElementById('summary');
+    const downloadBtn = document.getElementById('download-btn');
+    let lastSummaryText = '';
+
+    uploadForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!audioInput.files.length) return alert('Please select an audio file.');
+
+      transcriptEl.textContent = 'Transcribing...';
+      summaryEl.textContent = '';
+      downloadBtn.style.display = 'none';
+
+      const formData = new FormData();
+      formData.append('audio', audioInput.files[0]);
+
+      try {
+        const res = await fetch('http://localhost:5000/summarize', {
+          method: 'POST',
+          body: formData,
+        });
+        if (!res.ok) throw new Error('Summarization failed.');
+        const data = await res.json();
+        transcriptEl.textContent = data.transcript || '';
+        summaryEl.textContent = data.summary || '';
+        lastSummaryText = data.summary || '';
+
+        if (lastSummaryText) {
+          downloadBtn.style.display = 'inline-block';
+        }
+      } catch (err) {
+        transcriptEl.textContent = '';
+        summaryEl.textContent = 'Error: ' + err.message;
+      }
+    });
+
+    downloadBtn.addEventListener('click', () => {
+      if (!lastSummaryText) return;
+      const doc = new jsPDF();
+      const splitText = doc.splitTextToSize(lastSummaryText, 180);
+      doc.setFontSize(14);
+      doc.text('Meeting Summary', 15, 15);
+      doc.setFontSize(11);
+      doc.text(splitText, 15, 30);
+      doc.save('summary.pdf');
+    });
+
+    // Chatbot toggle & logic
+    const chatbotToggle = document.getElementById('chatbot-toggle');
+    const chatbotContainer = document.getElementById('chatbot-container');
+    const chatContainer = document.getElementById('chat-container');
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-input');
+
+    chatbotToggle.addEventListener('click', () => {
+      if (chatbotContainer.style.display === 'flex') {
+        chatbotContainer.style.display = 'none';
+      } else {
+        chatbotContainer.style.display = 'flex';
+        chatInput.focus();
+      }
+    });
+
+    chatForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const userMsg = chatInput.value.trim();
+      if (!userMsg) return;
+
+      appendMessage('user-msg', userMsg);
+      chatInput.value = '';
+      chatInput.disabled = true;
+
+      try {
+        const response = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: userMsg }),
+        });
+
+        if (!response.ok) throw new Error('Chat request failed.');
+
+        const data = await response.json();
+        appendMessage('ai-msg', data.answer || 'No response');
+      } catch (error) {
+        appendMessage('ai-msg', 'Error: ' + error.message);
+      } finally {
+        chatInput.disabled = false;
+        chatInput.focus();
+      }
+    });
+
+    function appendMessage(cls, text) {
+      const msgEl = document.createElement('div');
+      msgEl.className = cls;
+      msgEl.textContent = text;
+      chatContainer.appendChild(msgEl);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+  </script>
+</body>
+</html>
+
+
